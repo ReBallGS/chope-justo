@@ -436,6 +436,21 @@ describe('políticas e funções do Chope Justo', () => {
       [round.id, 'Conta do bar maior, sem rateio'],
     )
     expect(provisional.allocated).toBe(false)
+    const withService = await call<{
+      allocated: boolean
+      service_cents: number
+      payable_cents: number
+      difference_cents: number
+    }>(
+      `select public.propose_closing($1, 'provisional', 3500, $2, true) as result`,
+      [round.id, 'Dez por cento só sobre o confirmado'],
+    )
+    expect(withService.allocated).toBe(false)
+    expect(withService.service_cents).toBe(200)
+    expect(withService.payable_cents).toBe(2200)
+    expect(withService.difference_cents).toBe(1300)
+    const unchanged = await bundle(ana, round.id)
+    expect(unchanged.participants.map((person) => person.total_cents).sort((a, b) => a - b)).toEqual([0, 2000])
     await setUser(ana)
     await db.query(`select public.acknowledge_closing($1, 'accept')`, [provisional.closing_id])
     await setUser(bruno)
@@ -471,6 +486,21 @@ describe('políticas e funções do Chope Justo', () => {
     expect(totals).toEqual([1000, 2000])
     expect(closed.grand_cents).toBe(3000)
     expect(closed.adjustments).toHaveLength(0)
+  })
+
+  it('o convite mostra quem já está na mesa sem abrir a conta', async () => {
+    const ana = await createUser('Ana')
+    const round = await createRound(ana, 1800)
+    await setUser(null)
+    const preview = await call<{ name: string; members: string[]; unit_price_cents: number }>(
+      `select public.preview_round($1) as result`,
+      [round.access_code],
+    )
+    expect(preview.name).toBe('Bar do teste')
+    expect(preview.members).toEqual(['Ana'])
+    expect(preview.unit_price_cents).toBe(1800)
+    await expect(db.query(`select public.join_round($1)`, [round.access_code])).rejects.toThrow()
+    await expect(db.query(`select public.get_round_bundle($1)`, [round.id])).rejects.toThrow()
   })
 
   it('12. totais individuais e geral permanecem consistentes', async () => {

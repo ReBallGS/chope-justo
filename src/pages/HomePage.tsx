@@ -35,12 +35,9 @@ export function HomePage() {
 
   return (
     <section className="stack">
-      <p className="muted">Conta da mesa, à vista de todo mundo</p>
+      <p className="eyebrow">Conta da mesa</p>
       <h1>Cada pessoa paga o que consumiu.</h1>
-      <p className="lede">
-        O Chope Justo registra cada chope, mostra quem lançou, pede confirmação quando outra pessoa anota
-        e guarda o histórico. Ele não acusa ninguém e também não consegue ver um copo que ninguém registrou.
-      </p>
+      <p className="lede">Anote o chope, confirme o que é seu e feche sem dividir a conta no olho.</p>
 
       {!configured && (
         <div className="card stack">
@@ -53,37 +50,50 @@ export function HomePage() {
       )}
 
       {configured && !session && (
-        <div className="row">
-          <Link className="button primary" to="/entrar">Entrar para começar</Link>
-        </div>
+        <Link className="launch-card primary" to="/entrar">
+          <strong>Entrar para começar</strong>
+          <span>Sua conta. O grupo vê o nome, não o e-mail.</span>
+        </Link>
       )}
 
       {session && (
         <>
-          <div className="row">
-            <Link className="button primary" to="/nova">Criar rodada</Link>
-            <Link className="button" to="/codigo">Entrar com código</Link>
+          <div className="launch">
+            <Link className="launch-card primary" to="/nova">
+              <strong>Abrir uma mesa</strong>
+              <span>Depois é só mandar o link</span>
+            </Link>
+            <Link className="launch-card" to="/codigo">
+              <strong>Entrar numa mesa</strong>
+              <span>Com o código ou o convite</span>
+            </Link>
           </div>
-          <form className="card stack" onSubmit={(event) => void saveName(event)}>
-            <h2>Seu nome na mesa</h2>
-            <p className="muted">Agora: {profile?.display_name ?? 'Participante'}. O e-mail não aparece para o grupo.</p>
-            <label className="field">
-              <span>Nome</span>
-              <input value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={40} required />
-            </label>
-            <button type="submit">Salvar nome</button>
-          </form>
+          <details className="card fold">
+            <summary>Você aparece como {profile?.display_name ?? 'Participante'}</summary>
+            <form className="stack" onSubmit={(event) => void saveName(event)}>
+              <p className="muted">O e-mail não aparece para o grupo.</p>
+              <label className="field">
+                <span>Nome na mesa</span>
+                <input value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={40} required />
+              </label>
+              <button type="submit">Salvar nome</button>
+            </form>
+          </details>
           <div className="stack">
-            <h2>Suas rodadas</h2>
-            {rounds.length === 0 && <p className="muted">Nenhuma rodada ainda.</p>}
+            <h2>Suas mesas</h2>
+            {rounds.length === 0 && <p className="muted">Nenhuma mesa ainda. Abra uma ou entre com um convite.</p>}
             {rounds.map((round) => (
-              <Link className="card spread" key={round.id} to={`/r/${round.id}`}>
+              <Link className="card spread round-link" key={round.id} to={`/r/${round.id}`}>
                 <span>
                   <strong>{round.name}</strong>
                   <br />
-                  <span className="muted">{formatWhen(round.starts_at)} · {formatCents(round.unit_price_cents)}</span>
+                  <span className="muted">{formatWhen(round.starts_at)}</span>
                 </span>
-                <span className="pill">{roundStatusLabel[round.status]}</span>
+                <span>
+                  <strong className="money">{formatCents(round.unit_price_cents)}</strong>
+                  <br />
+                  <span className="pill">{roundStatusLabel[round.status]}</span>
+                </span>
               </Link>
             ))}
           </div>

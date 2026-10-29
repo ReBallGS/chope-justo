@@ -121,6 +121,16 @@ export type ClosingView = {
   pending_cents: number
   disputed_cents: number
   grand_cents: number
+  service_cents: number
+  include_service: boolean
+  payable_cents: number
+  service_shares: Array<{
+    user_id: string
+    display_name: string
+    total_cents: number
+    service_cents: number
+    payable_cents: number
+  }>
   venue_bill_cents: number | null
   difference_cents: number | null
   explanation: string | null
@@ -189,4 +199,5 @@ export type RoundPreview = {
   unit_price_cents: number
   volume_ml: number | null
   status: RoundStatus
+  members: string[]
 } | null

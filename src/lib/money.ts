@@ -48,11 +48,21 @@ export function formatWhen(iso: string): string {
   }).format(new Date(iso))
 }
 
+export function serviceShareCents(totalCents: number): number {
+  if (!Number.isInteger(totalCents) || totalCents <= 0) return 0
+  return Math.trunc((totalCents + 5) / 10)
+}
+
 export function joinUrl(code: string): string {
   const base = import.meta.env.BASE_URL || '/'
   const url = new URL(base, window.location.origin)
   url.hash = `/j/${code}`
   return url.href
+}
+
+export function whatsAppShareUrl(name: string, code: string): string {
+  const text = `Mesa ${name} no Chope Justo.\nEntra por este link, cria tua conta e já cai nesta mesa:\n${joinUrl(code)}`
+  return `https://wa.me/?text=${encodeURIComponent(text)}`
 }
 
 export const VENUE_MAX = VENUE_MAX_CENTS

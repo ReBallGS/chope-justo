@@ -51,39 +51,43 @@ export function CreateRoundPage() {
 
   return (
     <section className="stack">
-      <h1>Criar rodada</h1>
-      <p className="lede">
-        As outras pessoas entram com o código e a própria conta. Ninguém é colocado na mesa no lugar de outra pessoa.
-      </p>
+      <p className="eyebrow">Nova mesa</p>
+      <h1>Abrir a conta</h1>
+      <p className="lede">Cada pessoa entra com a própria conta. Ninguém é colocado na mesa no lugar de outra.</p>
       <form className="card stack" onSubmit={(event) => void onSubmit(event)}>
         <label className="field">
-          <span>Bar ou grupo</span>
-          <input value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={80} required />
+          <span>Nome da mesa</span>
+          <input value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={80} placeholder="Galeto de sexta" required />
         </label>
         <label className="field">
           <span>Preço de cada chope</span>
           <input inputMode="decimal" placeholder="12,50" value={price} onChange={(event) => setPrice(event.target.value)} required />
         </label>
-        <label className="field">
-          <span>Volume em ml, se quiser anotar</span>
-          <input inputMode="numeric" value={volume} onChange={(event) => setVolume(event.target.value)} />
-        </label>
-        <label className="field">
-          <span>Data e hora</span>
-          <input type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} required />
-        </label>
-        <label className="field">
-          <span>Horas de revisão antes do fechamento definitivo</span>
-          <input type="number" min={0} max={72} value={reviewHours} onChange={(event) => setReviewHours(Number(event.target.value))} />
-        </label>
-        <p className="muted">Zero permite fechar assim que todo mundo confirmar. Um valor maior impede um fechamento apressado.</p>
-        <label className="row">
-          <input type="checkbox" checked={canRecord} onChange={(event) => setCanRecord(event.target.checked)} />
-          <span>Eu também posso registrar chope para outras pessoas. O lançamento fica pendente até a pessoa confirmar.</span>
-        </label>
+        <details className="fold">
+          <summary>Mais opções</summary>
+          <div className="stack">
+            <label className="field">
+              <span>Volume em ml</span>
+              <input inputMode="numeric" placeholder="300" value={volume} onChange={(event) => setVolume(event.target.value)} />
+            </label>
+            <label className="field">
+              <span>Data e hora</span>
+              <input type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} required />
+            </label>
+            <label className="field">
+              <span>Horas de revisão antes de fechar de vez</span>
+              <input type="number" min={0} max={72} value={reviewHours} onChange={(event) => setReviewHours(Number(event.target.value))} />
+            </label>
+            <p className="muted">Zero deixa fechar assim que todo mundo confirmar.</p>
+            <label className="check">
+              <input type="checkbox" checked={canRecord} onChange={(event) => setCanRecord(event.target.checked)} />
+              <span>Posso anotar chope para outras pessoas. Fica pendente até elas confirmarem.</span>
+            </label>
+          </div>
+        </details>
         {error && <p className="error">{error}</p>}
         <button className="primary big-action" type="submit" disabled={busy}>
-          {busy ? 'Criando…' : 'Criar rodada'}
+          {busy ? 'Abrindo…' : 'Abrir a mesa'}
         </button>
       </form>
     </section>

@@ -143,6 +143,7 @@ export const api = {
     type: 'provisional' | 'final'
     venueCents: number | null
     explanation: string
+    includeService: boolean
   }) =>
     rpc<{ closing_id: string; difference_cents: number | null; allocated: boolean }>(
       'propose_closing',
@@ -151,6 +152,7 @@ export const api = {
         p_closing_type: input.type,
         p_venue_bill_cents: input.venueCents,
         p_explanation: input.explanation,
+        p_include_service: input.includeService,
       },
     ),
   acknowledge: (closingId: string, decision: 'accept' | 'reject') =>

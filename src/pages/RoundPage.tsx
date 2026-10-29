@@ -13,7 +13,7 @@ import {
   roundStatusLabel,
   statusLabel,
 } from '../lib/labels'
-import { formatAccessCode, formatCents, formatWhen, joinUrl, parseReaisToCents, VENUE_MAX } from '../lib/money'
+import { formatAccessCode, formatCents, formatWhen, joinUrl, parseReaisToCents, serviceShareCents, VENUE_MAX, whatsAppShareUrl } from '../lib/money'
 import { enqueueOutbox, isOfflineError, outboxFor, removeOutbox, type OutboxItem } from '../lib/outbox'
 import { supabase } from '../lib/supabase'
 import type { EntryView, ReportCategory, RoundBundle } from '../lib/types'
@@ -157,39 +157,46 @@ export function RoundPage() {
     setNotice('Resumo copiado.')
   }
 
-  if (loading) return <p>Carregando a rodada…</p>
-  if (!bundle) return <p className="error">{error || 'Rodada indisponível.'}</p>
+  if (loading) return <p>Carregando a mesa…</p>
+  if (!bundle) return <p className="error">{error || 'Mesa indisponível.'}</p>
 
-  const tabs: Array<{ id: Tab; label: string }> = [
-    { id: 'registrar', label: 'Registrar' },
-    { id: 'extrato', label: 'Extrato' },
-    { id: 'divergencias', label: 'Divergências' },
-    { id: 'fechamento', label: 'Fechamento' },
-    { id: 'historico', label: 'Histórico' },
+  const mine = bundle.participants.find((person) => person.user_id === bundle.me.user_id)
+  const tabs: Array<{ id: Tab; label: string; hint: string }> = [
+    { id: 'registrar', label: 'Chope', hint: 'Registrar chope' },
+    { id: 'extrato', label: 'Conta', hint: 'Extrato da mesa' },
+    { id: 'divergencias', label: 'Avisos', hint: 'Divergências' },
+    { id: 'fechamento', label: 'Fechar', hint: 'Fechamento' },
+    { id: 'historico', label: 'Histórico', hint: 'Histórico da mesa' },
   ]
 
   return (
-    <section className="stack">
+    <section className="stack round-page">
       <div className="spread">
         <div>
-          <p className="muted">{roundStatusLabel[bundle.round.status]}</p>
+          <p className="eyebrow">{roundStatusLabel[bundle.round.status]}</p>
           <h1>{bundle.round.name}</h1>
-          <p>
-            {formatCents(bundle.round.unit_price_cents)} cada
+          <p className="hero-money">{formatCents(mine?.total_cents ?? 0)}</p>
+          <p className="muted">
+            sua conta agora · {formatCents(bundle.round.unit_price_cents)} cada
             {bundle.round.volume_ml ? ` · ${bundle.round.volume_ml} ml` : ''}
           </p>
         </div>
-        <button type="button" onClick={() => void refresh()}>Atualizar</button>
+        <button className="ghost" type="button" onClick={() => void refresh()}>Atualizar</button>
       </div>
       <div className="card stack">
-        <div className="spread">
-          <div>
-            <p className="muted">Código da mesa</p>
+        <a className="button primary" href={whatsAppShareUrl(bundle.round.name, bundle.round.access_code)} target="_blank" rel="noreferrer">
+          Chamar no WhatsApp
+        </a>
+        <button type="button" onClick={() => void navigator.clipboard.writeText(joinUrl(bundle.round.access_code)).then(() => setNotice('Link da mesa copiado.'))}>
+          Copiar link
+        </button>
+        <details className="fold" onToggle={(event) => setShowQr(event.currentTarget.open)}>
+          <summary>QR e código</summary>
+          <div className="stack">
             <code className="access">{formatAccessCode(bundle.round.access_code)}</code>
+            {showQr && qr && <img className="qr" src={qr} alt="QR Code para entrar nesta mesa" />}
           </div>
-          <button type="button" onClick={() => setShowQr((value) => !value)}>{showQr ? 'Esconder QR' : 'Mostrar QR'}</button>
-        </div>
-        {showQr && qr && <img className="qr" src={qr} alt="QR Code para entrar nesta rodada" />}
+        </details>
       </div>
       {unseen > 0 && (
         <div className="banner row">
@@ -199,13 +206,13 @@ export function RoundPage() {
       )}
       {notice && <p>{notice}</p>}
       {error && <p className="error">{error}</p>}
-      <div className="tabs" role="tablist">
+      <nav className="dock" role="tablist" aria-label="Seções da mesa">
         {tabs.map((item) => (
-          <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} onClick={() => setTab(item.id)}>
+          <button key={item.id} type="button" role="tab" aria-label={item.hint} aria-selected={tab === item.id} onClick={() => setTab(item.id)}>
             {item.label}
           </button>
         ))}
-      </div>
+      </nav>
       {tab === 'registrar' && (
         <RegisterPanel bundle={bundle} busy={busy} outbox={outbox} run={run} onQueued={() => setOutbox(outboxFor(id))} />
       )}
@@ -297,7 +304,7 @@ function RegisterPanel({
         <button type="button" onClick={() => setQuantity((value) => Math.min(10, value + 1))} aria-label="Aumentar quantidade">+</button>
       </div>
       <button className="primary big-action" type="button" disabled={busy || closed} onClick={() => void register()}>
-        {closed ? 'Rodada fechada para novos chopes' : 'Registrar chope'}
+        {closed ? 'Mesa fechada para novos chopes' : `Anotar ${quantity} chope${quantity > 1 ? 's' : ''}`}
       </button>
       {outbox.length > 0 && (
         <div className="outbox">
@@ -669,7 +676,11 @@ function Closing({
   const [adjustNote, setAdjustNote] = useState('')
   const [price, setPrice] = useState('')
   const [priceNote, setPriceNote] = useState('')
+  const [includeService, setIncludeService] = useState(false)
   const venueCents = venue.trim() ? parseReaisToCents(venue, { allowZero: true, maxCents: VENUE_MAX }) : null
+  const servicePreview = includeService
+    ? bundle.participants.reduce((sum, person) => sum + serviceShareCents(person.total_cents), 0)
+    : 0
 
   return (
     <div className="stack">
@@ -696,6 +707,26 @@ function Closing({
             <span>Conta informada pelo estabelecimento</span>
             <input inputMode="decimal" placeholder="0,00" value={venue} onChange={(event) => setVenue(event.target.value)} />
           </label>
+          <label className="check">
+            <input type="checkbox" checked={includeService} onChange={(event) => setIncludeService(event.target.checked)} />
+            <span>Incluir 10% de serviço</span>
+          </label>
+          {includeService && (
+            <div className="stack">
+              <p>10% sobre o que cada pessoa já tem confirmado: {formatCents(servicePreview)}. Total com serviço: {formatCents(bundle.grand_cents + servicePreview)}.</p>
+              <ul>
+                {bundle.participants.map((person) => {
+                  const service = serviceShareCents(person.total_cents)
+                  return (
+                    <li key={person.user_id}>
+                      {person.display_name}: {formatCents(person.total_cents)} + {formatCents(service)} = {formatCents(person.total_cents + service)}
+                    </li>
+                  )
+                })}
+              </ul>
+              <p className="muted">O percentual sai da conta de cada um. O que sobrar da conta do bar continua sem rateio.</p>
+            </div>
+          )}
           <label className="field">
             <span>Explicação, se houver diferença ou item em aberto</span>
             <textarea value={explanation} onChange={(event) => setExplanation(event.target.value)} />
@@ -713,6 +744,7 @@ function Closing({
             type: 'provisional',
             venueCents,
             explanation,
+            includeService,
           }))}>
             Propor fechamento provisório
           </button>
@@ -721,6 +753,7 @@ function Closing({
             type: 'final',
             venueCents,
             explanation,
+            includeService,
           }))}>
             Propor fechamento definitivo
           </button>
@@ -734,9 +767,19 @@ function Closing({
           <article className="card stack" key={closing.id}>
             <h3>{closing.closing_type === 'final' ? 'Proposta definitiva' : 'Proposta provisória'}</h3>
             <p>Total confirmado {formatCents(closing.grand_cents)}
+              {closing.include_service ? ` · 10% ${formatCents(closing.service_cents)} · a pagar ${formatCents(closing.payable_cents)}` : ''}
               {closing.venue_bill_cents != null ? ` · conta do bar ${formatCents(closing.venue_bill_cents)}` : ''}
               {closing.difference_cents != null ? ` · diferença ${formatCents(closing.difference_cents)} sem rateio` : ''}
             </p>
+            {closing.include_service && closing.service_shares.length > 0 && (
+              <ul>
+                {closing.service_shares.map((share) => (
+                  <li key={share.user_id}>
+                    {share.display_name}: {formatCents(share.total_cents)} + 10% {formatCents(share.service_cents)} = {formatCents(share.payable_cents)}
+                  </li>
+                ))}
+              </ul>
+            )}
             {closing.explanation && <p>{closing.explanation}</p>}
             <ul>
               {bundle.participants.map((person) => (

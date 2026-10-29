@@ -746,7 +746,9 @@ declare
   v_code text := public._normalize_code(p_access_code);
   v public.rounds;
 begin
-  perform public._rate_limit('preview_round', 30, interval '1 hour');
+  if auth.uid() is not null then
+    perform public._rate_limit('preview_round', 30, interval '1 hour');
+  end if;
   if v_code is null then
     return null;
   end if;
@@ -759,7 +761,13 @@ begin
     'starts_at', v.starts_at,
     'unit_price_cents', v.unit_price_cents,
     'volume_ml', v.volume_ml,
-    'status', v.status
+    'status', v.status,
+    'members', coalesce((
+      select jsonb_agg(pr.display_name order by rp.joined_at)
+      from public.round_participants rp
+      join public.profiles pr on pr.id = rp.user_id
+      where rp.round_id = v.id
+    ), '[]'::jsonb)
   );
 end;
 $$;

@@ -88,7 +88,7 @@ export function AuthPage() {
         </label>
         {error && <p className="error">{error}</p>}
         {info && <p>{info}</p>}
-        <button className="primary" type="submit" disabled={busy}>
+        <button className="primary big-action" type="submit" disabled={busy}>
           {busy ? 'Aguarde…' : mode === 'criar' ? 'Criar conta' : 'Entrar'}
         </button>
         <button className="ghost" type="button" onClick={() => setMode(mode === 'criar' ? 'entrar' : 'criar')}>

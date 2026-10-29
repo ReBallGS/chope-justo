@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCents, normalizeAccessCode, parseReaisToCents } from '../src/lib/money'
+import { formatCents, normalizeAccessCode, parseReaisToCents, serviceShareCents } from '../src/lib/money'
 
 describe('dinheiro em centavos', () => {
   it('lê valores com vírgula e ponto sem usar ponto flutuante solto', () => {
@@ -20,6 +20,14 @@ describe('dinheiro em centavos', () => {
     expect(formatCents(1250)).toBe('R$ 12,50')
     expect(formatCents(-100)).toBe('-R$ 1,00')
     expect(formatCents(123456)).toBe('R$ 1.234,56')
+  })
+
+  it('calcula 10% em centavos, arredondando meio para cima', () => {
+    expect(serviceShareCents(2000)).toBe(200)
+    expect(serviceShareCents(333)).toBe(33)
+    expect(serviceShareCents(105)).toBe(11)
+    expect(serviceShareCents(0)).toBe(0)
+    expect(serviceShareCents(-500)).toBe(0)
   })
 
   it('normaliza o código da rodada', () => {

@@ -224,6 +224,8 @@ create table public.round_closings (
   pending_cents integer not null,
   disputed_cents integer not null,
   grand_cents integer not null,
+  service_cents integer not null default 0,
+  include_service boolean not null default false,
   venue_bill_cents integer,
   difference_cents integer,
   explanation text,
@@ -234,6 +236,7 @@ create table public.round_closings (
   constraint closings_buckets check (
     confirmed_cents >= 0 and pending_cents >= 0 and disputed_cents >= 0
   ),
+  constraint closings_service check (service_cents >= 0),
   constraint closings_venue check (venue_bill_cents is null or venue_bill_cents >= 0),
   constraint closings_explanation check (
     explanation is null or char_length(explanation) between 8 and 500
@@ -306,9 +309,22 @@ create trigger on_auth_user_created
 
 -- ---------------------------------------------------------------------------
 -- Travas. Usuário da aplicação não escreve direto.
--- Dono do schema (postgres / supabase_admin), usado pelas funções, escreve.
+-- As funções security definer rodam como postgres. No Supabase hospedado
+-- esse papel não é superusuário, mas é o dono do schema e ignora RLS.
 -- Lançamento, auditoria e confirmação não mudam nem somem, nem para o dono.
 -- ---------------------------------------------------------------------------
+
+create or replace function public.is_trusted_writer()
+returns boolean
+language sql
+stable
+as $$
+  select current_user in ('postgres', 'supabase_admin')
+    or exists (
+      select 1 from pg_catalog.pg_roles
+      where rolname = current_user and rolsuper
+    );
+$$;
 
 create or replace function public.block_untrusted_insert()
 returns trigger
@@ -316,10 +332,7 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  if not exists (
-    select 1 from pg_catalog.pg_roles
-    where rolname = current_user and rolsuper
-  ) then
+  if not public.is_trusted_writer() then
     raise exception 'Inclusão direta não é permitida.';
   end if;
   return new;
@@ -350,10 +363,7 @@ begin
   end if;
   v_new := to_jsonb(new);
   v_old := to_jsonb(old);
-  if not exists (
-    select 1 from pg_catalog.pg_roles
-    where rolname = current_user and rolsuper
-  ) then
+  if not public.is_trusted_writer() then
     raise exception 'Alteração direta não é permitida.';
   end if;
   if tg_table_name = 'rounds' then

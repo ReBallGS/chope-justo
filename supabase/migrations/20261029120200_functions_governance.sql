@@ -893,7 +893,8 @@ create or replace function public.propose_closing(
   p_round_id uuid,
   p_closing_type text,
   p_venue_bill_cents integer,
-  p_explanation text
+  p_explanation text,
+  p_include_service boolean default false
 )
 returns jsonb
 language plpgsql
@@ -910,6 +911,13 @@ declare
   v_text text;
   v_id uuid := gen_random_uuid();
   v_blockers integer;
+  v_include boolean := coalesce(p_include_service, false);
+  v_service bigint := 0;
+  v_payable bigint;
+  v_person jsonb;
+  v_person_total bigint;
+  v_person_service bigint;
+  v_shares jsonb := '[]'::jsonb;
 begin
   if p_closing_type not in ('provisional', 'final') then
     raise exception 'Tipo de fechamento inválido.';
@@ -952,8 +960,36 @@ begin
     end if;
   end if;
 
+  for v_person in
+    select value
+    from jsonb_array_elements(coalesce(v_snap -> 'participants', '[]'::jsonb))
+  loop
+    v_person_total := coalesce((v_person ->> 'total_cents')::bigint, 0);
+    if v_include and v_person_total > 0 then
+      v_person_service := (v_person_total + 5) / 10;
+    else
+      v_person_service := 0;
+    end if;
+    v_service := v_service + v_person_service;
+    v_shares := v_shares || jsonb_build_array(jsonb_build_object(
+      'user_id', v_person ->> 'user_id',
+      'display_name', v_person ->> 'display_name',
+      'total_cents', v_person_total,
+      'service_cents', v_person_service,
+      'payable_cents', v_person_total + v_person_service
+    ));
+  end loop;
+
+  v_payable := v_grand + v_service;
+  v_snap := v_snap || jsonb_build_object(
+    'service_shares', v_shares,
+    'service_cents', v_service,
+    'include_service', v_include,
+    'payable_cents', v_payable
+  );
+
   if p_venue_bill_cents is not null then
-    v_diff := p_venue_bill_cents - v_grand;
+    v_diff := (p_venue_bill_cents::bigint - v_payable)::integer;
   else
     v_diff := null;
   end if;
@@ -968,7 +1004,8 @@ begin
 
   insert into public.round_closings (
     id, round_id, closing_type, confirmed_cents, pending_cents, disputed_cents,
-    grand_cents, venue_bill_cents, difference_cents, explanation, snapshot, created_by
+    grand_cents, service_cents, include_service, venue_bill_cents, difference_cents,
+    explanation, snapshot, created_by
   ) values (
     v_id,
     p_round_id,
@@ -977,6 +1014,8 @@ begin
     (v_snap ->> 'pending_cents')::integer,
     (v_snap ->> 'disputed_cents')::integer,
     v_grand::integer,
+    v_service::integer,
+    v_include,
     p_venue_bill_cents,
     v_diff,
     v_text,
@@ -987,6 +1026,9 @@ begin
   perform public._audit(p_round_id, 'closing_proposed', 'closing', v_id, jsonb_build_object(
     'closing_type', p_closing_type,
     'grand_cents', v_grand,
+    'service_cents', v_service,
+    'include_service', v_include,
+    'payable_cents', v_payable,
     'venue_bill_cents', p_venue_bill_cents,
     'difference_cents', v_diff
   ));
@@ -994,6 +1036,8 @@ begin
   return jsonb_build_object(
     'closing_id', v_id,
     'grand_cents', v_grand,
+    'service_cents', v_service,
+    'payable_cents', v_payable,
     'difference_cents', v_diff,
     'allocated', false
   );
@@ -1157,6 +1201,10 @@ begin
         'pending_cents', cl.pending_cents,
         'disputed_cents', cl.disputed_cents,
         'grand_cents', cl.grand_cents,
+        'service_cents', cl.service_cents,
+        'include_service', cl.include_service,
+        'payable_cents', cl.grand_cents + cl.service_cents,
+        'service_shares', coalesce(cl.snapshot -> 'service_shares', '[]'::jsonb),
         'venue_bill_cents', cl.venue_bill_cents,
         'difference_cents', cl.difference_cents,
         'explanation', cl.explanation,
@@ -1236,7 +1284,7 @@ revoke all on all functions in schema public from public, anon, authenticated;
 grant execute on function public.update_display_name(text) to authenticated;
 grant execute on function public.my_rounds() to authenticated;
 grant execute on function public.create_round(text, integer, integer, timestamptz, integer, boolean) to authenticated;
-grant execute on function public.preview_round(text) to authenticated;
+grant execute on function public.preview_round(text) to anon, authenticated;
 grant execute on function public.join_round(text) to authenticated;
 grant execute on function public.record_consumption(uuid, uuid, integer, uuid, text) to authenticated;
 grant execute on function public.confirm_entry(uuid) to authenticated;
@@ -1257,7 +1305,7 @@ grant execute on function public.set_recorder_permission(uuid, uuid, boolean) to
 grant execute on function public.change_unit_price(uuid, integer, text) to authenticated;
 grant execute on function public.start_review(uuid) to authenticated;
 grant execute on function public.resume_round(uuid) to authenticated;
-grant execute on function public.propose_closing(uuid, text, integer, text) to authenticated;
+grant execute on function public.propose_closing(uuid, text, integer, text, boolean) to authenticated;
 grant execute on function public.acknowledge_closing(uuid, text) to authenticated;
 grant execute on function public.get_round_bundle(uuid) to authenticated;
 grant execute on function public.is_round_member(uuid) to authenticated;
