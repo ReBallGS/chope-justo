@@ -78,7 +78,39 @@ h3 { font-size: 1.05rem; margin: 0; }
   align-items: center;
   padding: calc(0.75rem + env(safe-area-inset-top)) 0 0.4rem;
 }
-.brand { font-family: Fraunces, Georgia, serif; font-size: 1.2rem; text-decoration: none; color: var(--ink); }
+.brand { text-decoration: none; color: var(--ink); }
+.brand-lockup { display: inline-flex; align-items: center; gap: 0.55rem; }
+.logo-mark { display: block; flex: none; filter: drop-shadow(0 6px 10px rgba(196, 81, 42, 0.22)); }
+.brand-name {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--ink);
+}
+.brand-name span { color: var(--accent); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 0.7rem 0.85rem;
+  box-shadow: var(--shadow);
+}
+.steps b {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.82rem;
+  flex: none;
+}
 .wrap { width: min(40rem, calc(100% - 1.4rem)); margin: 0 auto 2.5rem; }
 .stack { display: grid; gap: 0.8rem; }
 .card {

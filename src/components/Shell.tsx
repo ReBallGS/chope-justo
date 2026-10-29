@@ -1,5 +1,6 @@
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
+import { Logo } from './Logo'
 import type { ReactNode } from 'react'
 
 export function Shell() {
@@ -7,7 +8,9 @@ export function Shell() {
   return (
     <div className="app">
       <header className="topbar wrap">
-        <Link className="brand" to="/">Chope Justo</Link>
+        <Link className="brand" to="/" aria-label="Chope Justo, início">
+          <Logo />
+        </Link>
         {session ? (
           <button className="ghost" type="button" onClick={() => void signOut()}>Sair</button>
         ) : configured ? (

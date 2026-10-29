@@ -35,9 +35,16 @@ export function HomePage() {
 
   return (
     <section className="stack">
-      <p className="eyebrow">Conta da mesa</p>
-      <h1>Cada pessoa paga o que consumiu.</h1>
-      <p className="lede">Anote o chope, confirme o que é seu e feche sem dividir a conta no olho.</p>
+      <p className="eyebrow">A conta do chope, sem discussão</p>
+      <h1>Cada um paga o que bebeu.</h1>
+      <p className="lede">Abre a mesa, manda o link e deixa o grupo anotar junto.</p>
+      {!session && (
+        <ol className="steps">
+          <li><b>1</b> Alguém abre a mesa e manda o link.</li>
+          <li><b>2</b> Cada pessoa anota o próprio chope.</li>
+          <li><b>3</b> Na hora de fechar, cada um paga o seu.</li>
+        </ol>
+      )}
 
       {!configured && (
         <div className="card stack">
